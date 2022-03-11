@@ -1,0 +1,21 @@
+# Source files
+src/
+test/
+dist/
+.idea
+*.iml
+*.map
+.eslintrc
+azure-pipelines.yml
+jest.config.js
+tsconfig.json
+
+# Generated test/coverage files
+coverage/
+junit.xml
+BuildQualityChecksSummary.md
+
+# Generated NPM files
+package-lock.json
+.scannerwork/
+tsconfig

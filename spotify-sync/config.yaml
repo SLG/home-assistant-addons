@@ -1,0 +1,29 @@
+slug: slg_spotify_sync
+name: Spotify Sync
+version: 0.0.1
+url: https://github.com/SLG/home-assistant-addons
+stage: stable
+description: A tool for keeping a playlist up to date
+arch:
+  - armhf
+  - armv7
+  - aarch64
+  - amd64
+  - i386
+startup: services
+boot: auto
+ports:
+  8833/tcp: 8833
+ports_description:
+  8833/tcp: Webservice API
+map: []
+options:
+  client_id:
+  client_secret:
+  redirect_uri:
+  playlist_id:
+schema:
+  client_id: str
+  client_secret: str
+  redirect_uri: str
+  playlist_id: str

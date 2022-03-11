@@ -1,0 +1,15 @@
+.idea/
+generated/
+coverage/
+node_modules/
+dist/
+junit.xml
+sftp.json
+.vscode/
+*.log
+lib/
+
+src/syncFile.txt
+
+# IDE specific files
+/*.iml

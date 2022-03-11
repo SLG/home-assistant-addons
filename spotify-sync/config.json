@@ -1,0 +1,18 @@
+{
+  "slug": "slg_test_addon",
+  "name": "SLG Test Addon",
+  "version": "0.0.1",
+  "url": "https://github.com/SLG/home-assistant-addons",
+  "stage": "stable",
+  "description": "My first addon",
+  "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
+  "startup": "services",
+  "boot": "auto",
+  "ports": {
+    "8833/tcp": 8833
+  },
+  "ports_description": {
+    "8833/tcp": "Webservice API"
+  },
+  "map": []
+}

@@ -27,3 +27,4 @@ schema:
   client_secret: str
   redirect_uri: str
   playlist_id: str
+init: false

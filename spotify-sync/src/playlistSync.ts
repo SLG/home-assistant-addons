@@ -21,8 +21,14 @@ export class PlaylistSyncService {
     }
 
     getStats(): Stats {
+        let lastSync: number;
+        try {
+            lastSync = new Date(readFileSync(syncFile).toString()).getTime()
+        } catch (err: any) {
+            lastSync = -1;
+        }
         const stats: Stats = {
-            lastSync: new Date(readFileSync(syncFile).toString()).getTime(),
+            lastSync,
             addedSongsSinceLastStats: this.addedSongsSinceLastStats,
             removedSongsSinceLastStats: this.removedSongsSinceLastStats,
             removedSongs: this.removedSongs,
@@ -47,10 +53,10 @@ export class PlaylistSyncService {
         }
         console.log('Now', new Date());
         console.log('Last synced', lastSync);
-        console.log('Add new saved songs');
-        const newAddedSongs = await this.addNewSavedTracksToPlaylist(lastSync);
         console.log('Remove recently played songs');
         const removedSongs = await this.removePlayedTracksFromPlaylist(lastSync);
+        console.log('Add new saved songs');
+        const newAddedSongs = await this.addNewSavedTracksToPlaylist(lastSync);
         writeFileSync(syncFile, `${new Date()}`);
         this.addedSongsSinceLastStats += newAddedSongs;
         this.removedSongsSinceLastStats += removedSongs;

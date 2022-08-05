@@ -1,6 +1,6 @@
 slug: slg_spotify_sync
 name: Spotify Sync
-version: 0.0.2
+version: 0.0.3
 url: https://github.com/SLG/home-assistant-addons
 stage: stable
 description: A tool for keeping a playlist up to date
@@ -22,9 +22,11 @@ options:
   client_secret:
   redirect_uri:
   playlist_id:
+  market:
 schema:
   client_id: str
   client_secret: str
   redirect_uri: str
   playlist_id: str
+  market: str
 init: false

@@ -8,9 +8,10 @@ const clientId = process.env.CLIENT_ID;
 const clientSecret = process.env.CLIENT_SECRET;
 const redirectUri = process.env.REDIRECT_URI;
 const playlistId = process.env.PLAYLIST_ID;
+const market = process.env.MARKET_ID;
 
 const spotifyApi = new SpotifyWebApi({ clientId, clientSecret, redirectUri });
-const playlistSyncService = new PlaylistSyncService(spotifyApi, playlistId);
+const playlistSyncService = new PlaylistSyncService(spotifyApi, playlistId, market);
 
 let code;
 

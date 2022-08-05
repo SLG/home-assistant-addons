@@ -3,8 +3,6 @@ import SpotifyWebApi from 'spotify-web-api-node';
 
 const syncFile = '/data/syncFile.txt';
 
-const market = 'NL';
-
 export interface Stats {
     addedSongsSinceLastStats: number;
     lastSync: number;
@@ -17,7 +15,7 @@ export class PlaylistSyncService {
     private removedSongs: string[] = [];
     private removedSongsSinceLastStats = 0;
 
-    constructor(private spotifyWebApi: SpotifyWebApi, private playlistId: string) {
+    constructor(private spotifyWebApi: SpotifyWebApi, private playlistId: string, private market: string) {
     }
 
     getStats(): Stats {
@@ -80,7 +78,7 @@ export class PlaylistSyncService {
                 .map(item => item.track);
 
             if (newTracks.length > 0) {
-                const localTracks = (await this.spotifyWebApi.getTracks(newTracks.map(track => track.id), { market })).body.tracks;
+                const localTracks = (await this.spotifyWebApi.getTracks(newTracks.map(track => track.id), { market: this.market })).body.tracks;
                 console.log('Got local tracks');
 
                 const newTrackUris = [];

@@ -39,6 +39,20 @@ action:
 mode: single
 ```
 
+### Optional sensor
+If you want to know how many songs are removed, you can use something like this:
+```yaml
+  - platform: rest
+    name: Spotify Sync
+    resource: http://localhost:8833/stats
+    scan_interval: 3600
+    value_template: "{{ value_json.removedSongsSinceLastStats | int }}"
+    json_attributes:
+      - lastSync
+      - addedSongsSinceLastStats
+      - removedSongs
+```
+
 # Known issues
 Some songs can't be removed. This seems to have something to do with regions. When a song is not available in your region, it cannot be
 removed via the API. This is kinda solved by looking for the correct song in your region, but it could still remain. When the number of

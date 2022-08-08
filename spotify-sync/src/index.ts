@@ -45,7 +45,7 @@ app.get('/stats', (_, res) => {
 });
 
 function getCode(): string {
-    return spotifyApi.createAuthorizeURL(['user-library-read', 'user-library-modify', 'playlist-modify-private', 'user-read-recently-played'], 'my-random-state');
+    return spotifyApi.createAuthorizeURL(['user-library-read', 'user-library-modify', 'playlist-modify-private', 'playlist-modify-public', 'user-read-recently-played'], 'my-random-state');
 }
 
 interface Codes {

@@ -44,6 +44,10 @@ app.get('/stats', (_, res) => {
     res.send(playlistSyncService.getStats());
 });
 
+app.get('/reset', (_, res) => {
+    res.send(playlistSyncService.reset());
+});
+
 function getCode(): string {
     return spotifyApi.createAuthorizeURL(['user-library-read', 'user-library-modify', 'playlist-modify-private', 'playlist-modify-public', 'user-read-recently-played'], 'my-random-state');
 }

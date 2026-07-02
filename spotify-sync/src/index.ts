@@ -101,7 +101,7 @@ async function login(): Promise<void> {
                 spotifyApi.setRefreshToken(newCodes.refreshToken);
             } else {
                 console.log('Authorize yourself with this url:', getCode());
-                return Promise.reject('No code');
+                throw new Error('No code');
             }
         } catch (err) {
             console.error('Something went wrong when retrieving an access token', err);
@@ -125,7 +125,7 @@ async function login(): Promise<void> {
                 console.error('Refresh token has expired (invalid_grant). Discarding stored tokens and requiring re-authorization.');
                 discardCodes();
                 console.log('Re-authorize the app with this URL:', getCode());
-                return Promise.reject(new Error('invalid_grant: refresh token expired, re-authorization required'));
+                throw new Error('invalid_grant: refresh token expired, re-authorization required');
             }
             console.error('Something went wrong when refreshing an access token', err);
         }

@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Optional version override (for example: 1.2.3 or v1.2.3)"
+        description: "Optional version override (for example: 1.2.3 or v1.2.3). If not provided, bumps minor version automatically."
         required: false
         type: string
 
@@ -27,7 +27,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Resolve version and validate files
+      - name: Read current version and bump to next minor
         id: version
         shell: bash
         env:
@@ -49,33 +49,43 @@ jobs:
           config_version = match.group(1).strip().strip('"\'')
           package_version = json.loads(Path("spotify-sync/package.json").read_text(encoding="utf-8")).get("version", "").strip()
 
+          if config_version != package_version:
+              raise RuntimeError(
+                  f"Version mismatch: config.yaml={config_version}, package.json={package_version}"
+              )
+
+          current_version = config_version
+
           if input_version:
               normalized_input = input_version[1:] if input_version.startswith("v") else input_version
-              if config_version != normalized_input or package_version != normalized_input:
-                  raise RuntimeError(
-                      f"Manual version '{normalized_input}' does not match files "
-                      f"(config.yaml={config_version}, package.json={package_version})"
-                  )
-              resolved = normalized_input
+              if not re.match(r"^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$", normalized_input):
+                  raise RuntimeError(f"Version '{normalized_input}' is not semver-like")
+              new_version = normalized_input
           else:
-              if config_version != package_version:
-                  raise RuntimeError(
-                      f"Version mismatch: config.yaml={config_version}, package.json={package_version}"
-                  )
-              resolved = config_version
+              if not re.match(r"^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$", current_version):
+                  raise RuntimeError(f"Version '{current_version}' is not semver-like")
+              
+              parts = current_version.split('.')
+              major = int(parts[0])
+              minor = int(parts[1])
+              patch_str = parts[2].split('-')[0].split('+')[0]
+              patch = int(patch_str)
+              
+              minor += 1
+              patch = 0
+              
+              new_version = f"{major}.{minor}.{patch}"
 
-          if not re.match(r"^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$", resolved):
-              raise RuntimeError(f"Version '{resolved}' is not semver-like")
-
-          tag = f"spotify-sync-v{resolved}"
+          tag = f"spotify-sync-v{new_version}"
 
           output_path = Path(os.environ["GITHUB_OUTPUT"])
           with output_path.open("a", encoding="utf-8") as output:
-              output.write(f"value={resolved}\n")
+              output.write(f"value={new_version}\n")
               output.write(f"tag={tag}\n")
 
-          print(f"Resolved version: {resolved}")
-          print(f"Resolved tag: {tag}")
+          print(f"Current version: {current_version}")
+          print(f"New version: {new_version}")
+          print(f"New tag: {tag}")
           PY
 
       - name: Stop if tag already exists
@@ -90,6 +100,47 @@ jobs:
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Update version files
+        if: steps.tag_exists.outputs.exists == 'false'
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          version = os.environ["VERSION"]
+
+          config_path = Path("spotify-sync/config.yaml")
+          config_text = config_path.read_text(encoding="utf-8")
+          config_text, count = re.subn(r"(?m)^version:\s*.*$", f"version: {version}", config_text, count=1)
+          if count != 1:
+              raise RuntimeError("Could not find a single 'version:' line in spotify-sync/config.yaml")
+          config_path.write_text(config_text, encoding="utf-8")
+
+          package_path = Path("spotify-sync/package.json")
+          package_data = json.loads(package_path.read_text(encoding="utf-8"))
+          package_data["version"] = version
+          package_path.write_text(json.dumps(package_data, indent=2) + "\n", encoding="utf-8")
+
+          print(f"Updated both files to version {version}")
+          PY
+
+      - name: Commit version bump
+        if: steps.tag_exists.outputs.exists == 'false'
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add spotify-sync/config.yaml spotify-sync/package.json
+          git commit -m "chore: bump addon version to $VERSION"
+          git push origin HEAD:${{ github.event.repository.default_branch || github.ref_name }}
 
       - name: Create and push tag
         if: steps.tag_exists.outputs.exists == 'false'

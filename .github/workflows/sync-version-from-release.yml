@@ -1,0 +1,80 @@
+name: Sync versions from release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to write (for example: 1.2.3 or v1.2.3)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  sync-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out default branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch || github.ref_name }}
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          RAW_VERSION="${{ github.event.release.tag_name || inputs.version }}"
+          VERSION="${RAW_VERSION#v}"
+
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Version '$RAW_VERSION' is not semver-like."
+            exit 1
+          fi
+
+          echo "raw=$RAW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Using version: $VERSION"
+
+      - name: Update files
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          version = os.environ["VERSION"]
+
+          config_path = Path("spotify-sync/config.yaml")
+          config_text = config_path.read_text(encoding="utf-8")
+          config_text, count = re.subn(r"(?m)^version:\s*.*$", f"version: {version}", config_text, count=1)
+          if count != 1:
+              raise RuntimeError("Could not find a single 'version:' line in spotify-sync/config.yaml")
+          config_path.write_text(config_text, encoding="utf-8")
+
+          package_path = Path("spotify-sync/package.json")
+          package_data = json.loads(package_path.read_text(encoding="utf-8"))
+          package_data["version"] = version
+          package_path.write_text(json.dumps(package_data, indent=2) + "\n", encoding="utf-8")
+          PY
+
+      - name: Commit and push
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No version changes needed"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add spotify-sync/config.yaml spotify-sync/package.json
+          git commit -m "chore: sync addon version to ${{ steps.version.outputs.value }}"
+          git push origin HEAD:${{ github.event.repository.default_branch || github.ref_name }}
+

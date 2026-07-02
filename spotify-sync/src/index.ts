@@ -72,6 +72,16 @@ function writeCodes(codes: Codes): void {
     writeFileSync('/data/accesscodes.txt', JSON.stringify(codes));
 }
 
+function discardCodes(): void {
+    try {
+        writeFileSync('/data/accesscodes.txt', '');
+    } catch (err) {
+        console.error('Failed to discard stored tokens', err);
+    }
+    spotifyApi.resetAccessToken();
+    spotifyApi.resetRefreshToken();
+}
+
 async function login(): Promise<void> {
     if (!spotifyApi.getRefreshToken()) {
         try {
@@ -100,7 +110,23 @@ async function login(): Promise<void> {
         try {
             const data = await spotifyApi.refreshAccessToken();
             spotifyApi.setAccessToken(data.body['access_token']);
-        } catch (err) {
+            if (data.body['refresh_token']) {
+                spotifyApi.setRefreshToken(data.body['refresh_token']);
+            }
+            const accessToken = spotifyApi.getAccessToken();
+            const refreshToken = spotifyApi.getRefreshToken();
+            writeCodes({ accessToken, refreshToken });
+        } catch (err: any) {
+            const isInvalidGrant =
+                err?.error === 'invalid_grant' ||
+                err?.message?.includes('invalid_grant') ||
+                (err?.statusCode === 400 && err?.error?.error === 'invalid_grant');
+            if (isInvalidGrant) {
+                console.error('Refresh token has expired (invalid_grant). Discarding stored tokens and requiring re-authorization.');
+                discardCodes();
+                console.log('Re-authorize the app with this URL:', getCode());
+                return Promise.reject(new Error('invalid_grant: refresh token expired, re-authorization required'));
+            }
             console.error('Something went wrong when refreshing an access token', err);
         }
     }

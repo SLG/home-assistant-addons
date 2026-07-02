@@ -1,0 +1,114 @@
+name: Create release from addon version
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    paths:
+      - spotify-sync/config.yaml
+      - spotify-sync/package.json
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Optional version override (for example: 1.2.3 or v1.2.3)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version and validate files
+        id: version
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          input_version = (os.environ.get("INPUT_VERSION") or "").strip()
+
+          config_text = Path("spotify-sync/config.yaml").read_text(encoding="utf-8")
+          match = re.search(r"(?m)^version:\s*(\S+)\s*$", config_text)
+          if not match:
+              raise RuntimeError("Could not read version from spotify-sync/config.yaml")
+
+          config_version = match.group(1).strip().strip('"\'')
+          package_version = json.loads(Path("spotify-sync/package.json").read_text(encoding="utf-8")).get("version", "").strip()
+
+          if input_version:
+              normalized_input = input_version[1:] if input_version.startswith("v") else input_version
+              if config_version != normalized_input or package_version != normalized_input:
+                  raise RuntimeError(
+                      f"Manual version '{normalized_input}' does not match files "
+                      f"(config.yaml={config_version}, package.json={package_version})"
+                  )
+              resolved = normalized_input
+          else:
+              if config_version != package_version:
+                  raise RuntimeError(
+                      f"Version mismatch: config.yaml={config_version}, package.json={package_version}"
+                  )
+              resolved = config_version
+
+          if not re.match(r"^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$", resolved):
+              raise RuntimeError(f"Version '{resolved}' is not semver-like")
+
+          tag = f"spotify-sync-v{resolved}"
+
+          output_path = Path(os.environ["GITHUB_OUTPUT"])
+          with output_path.open("a", encoding="utf-8") as output:
+              output.write(f"value={resolved}\n")
+              output.write(f"tag={tag}\n")
+
+          print(f"Resolved version: {resolved}")
+          print(f"Resolved tag: {tag}")
+          PY
+
+      - name: Stop if tag already exists
+        id: tag_exists
+        shell: bash
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" > /dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Tag ${TAG} already exists. Skipping release creation."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create and push tag
+        if: steps.tag_exists.outputs.exists == 'false'
+        shell: bash
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Spotify Sync addon $VERSION"
+          git push origin "$TAG"
+
+      - name: Create GitHub release
+        if: steps.tag_exists.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Spotify Sync v${{ steps.version.outputs.value }}
+          generate_release_notes: true
+
+

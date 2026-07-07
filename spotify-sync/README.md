@@ -22,7 +22,8 @@ ensures that you will only hear "new" music.
 ### Standalone
 
 1. Provide the environment variables
-2. Run the Typescript code: `npm run start`
+2. Use Node.js 26 or newer
+3. Run the Typescript code: `npm run start`
 
 ### Configuration
 

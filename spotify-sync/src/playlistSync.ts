@@ -21,7 +21,7 @@ export class PlaylistSyncService {
     getStats(): Stats {
         let lastSync: number;
         try {
-            lastSync = new Date(readFileSync(syncFile).toString()).getTime()
+            lastSync = new Date(readFileSync(syncFile).toString()).getTime();
         } catch (err: any) {
             lastSync = -1;
         }
@@ -76,10 +76,10 @@ export class PlaylistSyncService {
         let changedSongs = 0;
         const limit = 50;
         while (true) {
-            const removeFromSavedTracks = [];
-            const addToSavedTracks = [];
-            const removeFromSavedAlbums = [];
-            const addToSavedAlbums = [];
+            const removeFromSavedTracks: string[] = [];
+            const addToSavedTracks: string[] = [];
+            const removeFromSavedAlbums: string[] = [];
+            const addToSavedAlbums: string[] = [];
 
             const mySavedTracks: SpotifyApi.UsersSavedTracksResponse = (await this.spotifyWebApi.getMySavedTracks({ limit, offset })).body;
             console.log('Got saved tracks');
@@ -91,7 +91,7 @@ export class PlaylistSyncService {
                 const localTracks = (await this.spotifyWebApi.getTracks(newTracks.map(track => track.id), { market: this.market })).body.tracks;
                 console.log('Got local tracks');
 
-                const newTrackUris = [];
+                const newTrackUris: string[] = [];
 
                 const albumIds: Map<string, string> = new Map();
 
@@ -110,9 +110,10 @@ export class PlaylistSyncService {
                 const keys = [...albumIds.keys()];
                 if (keys.length > 0) {
                     (await this.spotifyWebApi.containsMySavedAlbums(keys)).body.forEach((isSaved, index) => {
-                        if (isSaved) {
+                        const albumId = albumIds.get(keys[index]);
+                        if (isSaved && albumId) {
                             removeFromSavedAlbums.push(keys[index]);
-                            addToSavedAlbums.push(albumIds.get(keys[index]));
+                            addToSavedAlbums.push(albumId);
                         }
                     });
                     console.log('Got saved albums');

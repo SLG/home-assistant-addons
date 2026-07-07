@@ -4,23 +4,30 @@ import { readFileSync, writeFileSync } from 'fs';
 import SpotifyWebApi from 'spotify-web-api-node';
 import { PlaylistSyncService } from './playlistSync';
 
-const clientId = process.env.CLIENT_ID;
-const clientSecret = process.env.CLIENT_SECRET;
-const redirectUri = process.env.REDIRECT_URI;
-const playlistId = process.env.PLAYLIST_ID;
-const market = process.env.MARKET_ID;
+function requireEnv(name: string, value: string | undefined): string {
+    if (!value) {
+        throw new Error(`Missing required environment variable: ${name}`);
+    }
+    return value;
+}
 
-const spotifyApi = new SpotifyWebApi({ clientId, clientSecret, redirectUri });
+const clientId = requireEnv('CLIENT_ID', process.env.CLIENT_ID);
+const clientSecret = requireEnv('CLIENT_SECRET', process.env.CLIENT_SECRET);
+const redirectUri = requireEnv('REDIRECT_URI', process.env.REDIRECT_URI);
+const playlistId = requireEnv('PLAYLIST_ID', process.env.PLAYLIST_ID);
+const market = requireEnv('MARKET_ID', process.env.MARKET_ID);
+
+const spotifyApi = new SpotifyWebApi({clientId, clientSecret, redirectUri});
 const playlistSyncService = new PlaylistSyncService(spotifyApi, playlistId, market);
 
-let code;
+let code: string | undefined;
 
 const app = express();
 app.use(cors());
 
 app.get('/', async (req, res) => {
     try {
-        code = req.query.code || null;
+        code = typeof req.query.code === 'string' ? req.query.code : undefined;
         await login();
         res.sendStatus(200);
     } catch (err) {
@@ -57,7 +64,8 @@ app.get('/force', (req, res) => {
 });
 
 function getCode(): string {
-    return spotifyApi.createAuthorizeURL(['user-library-read', 'user-library-modify', 'playlist-modify-private', 'playlist-modify-public', 'user-read-recently-played'], 'my-random-state');
+    return spotifyApi.createAuthorizeURL(['user-library-read', 'user-library-modify', 'playlist-modify-private', 'playlist-modify-public', 'user-read-recently-played'],
+        'my-random-state');
 }
 
 interface Codes {
@@ -101,7 +109,7 @@ async function login(): Promise<void> {
                 const data = await spotifyApi.authorizationCodeGrant(code);
                 console.log('The access token expires in ' + data.body['expires_in']);
 
-                const newCodes: Codes = { accessToken: data.body['access_token'], refreshToken: data.body['refresh_token'] };
+                const newCodes: Codes = {accessToken: data.body['access_token'], refreshToken: data.body['refresh_token']};
 
                 writeCodes(newCodes);
 
@@ -123,7 +131,11 @@ async function login(): Promise<void> {
             }
             const accessToken = spotifyApi.getAccessToken();
             const refreshToken = spotifyApi.getRefreshToken();
-            writeCodes({ accessToken, refreshToken });
+            if (accessToken && refreshToken) {
+                writeCodes({accessToken, refreshToken});
+            } else {
+                throw new Error('Missing access or refresh token after refresh');
+            }
         } catch (err: any) {
             const isInvalidGrant =
                 err?.error === 'invalid_grant' ||

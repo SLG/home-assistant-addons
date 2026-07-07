@@ -48,6 +48,14 @@ app.get('/reset', (_, res) => {
     res.send(playlistSyncService.reset());
 });
 
+app.get('/force', (req, res) => {
+    if (!req.query.date) {
+        res.send('Please set `date` as queryParameter, like ?date=2026-01-01T00:00:00.000Z')
+        return;
+    }
+    res.send(playlistSyncService.force(new Date(req.query.date as string)));
+});
+
 function getCode(): string {
     return spotifyApi.createAuthorizeURL(['user-library-read', 'user-library-modify', 'playlist-modify-private', 'playlist-modify-public', 'user-read-recently-played'], 'my-random-state');
 }

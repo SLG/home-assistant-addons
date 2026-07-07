@@ -42,6 +42,11 @@ export class PlaylistSyncService {
         return 'reset';
     }
 
+    force(date: Date): string {
+        writeFileSync(syncFile, date);
+        return 'forced to ' + date;
+    }
+
     async playlistSync(): Promise<void> {
         let lastSync: Date;
         try {

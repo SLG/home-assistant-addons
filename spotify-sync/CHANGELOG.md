@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v1.5.0
+
+Changes since `spotify-sync-v1.4.0`:
+
+- No commits found.
+
 ## v1.4.0
 
 Changes since `spotify-sync-v1.3.0`:

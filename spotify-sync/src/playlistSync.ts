@@ -43,7 +43,7 @@ export class PlaylistSyncService {
     }
 
     force(date: Date): string {
-        writeFileSync(syncFile, date);
+        writeFileSync(syncFile, date.toString());
         return 'forced to ' + date;
     }
 

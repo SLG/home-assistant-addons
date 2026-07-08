@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v1.6.0
+
+Changes since `spotify-sync-v1.5.0`:
+
+- `87d8f83` — Fix build issue.
+
 ## v1.5.0
 
 Changes since `spotify-sync-v1.4.0`:
